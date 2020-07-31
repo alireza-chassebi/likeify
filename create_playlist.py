@@ -60,13 +60,14 @@ class CreatePlaylist:
 
             # skip all videos that are not songs
             if song_name is not None and artist is not None:
+                spotify_uri = self.get_spotify_uri(song_name, artist)
                 # store spotify_uri for each song
-                self.all_song_info[video_title] = {
-                    "youtube_url": youtube_url,
-                    "song_name": song_name,
-                    "artist": artist,
-                    "spotify_uri": self.get_spotify_uri(song_name, artist)
-                }
+                if spotify_uri is not None:
+                    self.all_song_info[video_title] = {
+                        "youtube_url": youtube_url,
+                        "song_name": song_name,
+                        "artist": artist,
+                        "spotify_uri": spotify_uri}
 
     # create spotify playlist
     def create_playlist(self):
@@ -106,10 +107,32 @@ class CreatePlaylist:
 
         data = response.json()
         songs = data["tracks"]["items"]
-
         # first song that matches
+        if len(songs) == 0:
+            return None
+
         uri = songs[0]["uri"]
         return uri
 
-    def add_song_to_playlist(self):
-        pass
+    def add_songs_to_playlist(self):
+        # populate all_song_info
+        self.get_liked_videos()
+
+        spotify_uris = []
+        for song, info in self.all_song_info.items():
+            spotify_uris.append(info["spotify_uri"])
+
+        # create playlist
+        playlist_id = self.create_playlist()
+        # add all songs into new playlist
+        request_data = json.dumps(spotify_uris)
+        url = "https://api.spotify.com/v1/playlists/{}/tracks".format(
+            playlist_id)
+
+        response = requests.post(url, data=request_data, headers={
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {}".format(self.spotify_token)
+        })
+
+        data = response.json()
+        return data

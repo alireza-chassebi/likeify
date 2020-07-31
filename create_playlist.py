@@ -5,6 +5,7 @@ import requests
 import google_auth_oauthlib.flow
 import googleapiclient.discovery
 import googleapiclient.errors
+import youtube_dl
 
 
 class CreatePlaylist:
@@ -15,6 +16,7 @@ class CreatePlaylist:
             self.spotify_token = secrets["spotify_token"]
             self.spotify_user_id = secrets["spotify_user_id"]
             self.youtube_client = self.get_youtube_client()
+            self.all_song_info = {}
 
     def get_youtube_client(self):
         # Disable OAuthlib's HTTPS verification when running locally.
@@ -38,11 +40,37 @@ class CreatePlaylist:
         return youtube_client
 
     def get_liked_videos(self):
-        pass
+        request = self.youtube_client.videos().list(
+            part="snippet,contentDetails,statistics",
+            myRating="like"
+        )
+        response = request.execute()
+
+        for item in response["items"]:
+            video_title = item["snippet"]["title"]
+            youtube_url = "https://www.youtube.com/watch?v={}".format(
+                item["id"])
+            # extract video information
+            video = youtube_dl.YoutubeDL({}).extract_info(
+                youtube_url, download=False
+            )
+            # "track" and "artist" attributes are available for the media that is a track or a part of a music album
+            song_name = video["track"]
+            artist = video["artist"]
+
+            # skip all videos that are not songs
+            if song_name is not None and artist is not None:
+                # store spotify_uri for each song
+                self.all_song_info[video_title] = {
+                    "youtube_url": youtube_url,
+                    "song_name": song_name,
+                    "artist": artist,
+                    "spotify_uri": self.get_spotify_uri(song_name, artist)
+                }
 
     # create spotify playlist
     def create_playlist(self):
-
+        # playlist metadata
         request_body = json.dumps({
             'name': 'Liked YT Vids',
             'description': 'All liked YT videos',
@@ -65,7 +93,6 @@ class CreatePlaylist:
         return data["id"]  # playlist id
 
     def get_spotify_uri(self, song_name, artist):
-
         url = "https://api.spotify.com/v1/search?query=track%3A{}+artist%3A{}&type=track&offset=0&limit=20".format(
             song_name, artist)
 

@@ -7,6 +7,7 @@ import googleapiclient.discovery
 import googleapiclient.errors
 import youtube_dl
 
+
 spotify_token_instructions = "\n1. Visit the URL below \n2. Click GET TOKEN followed by REQUEST TOKEN \n3. LOGIN if required, if not go to step 4\n4. Copy and enter OAuth token below 😀 \nURL:{}\nEnter here:".format(
     "https://developer.spotify.com/console/post-playlist-tracks/?playlist_id=&position=&uris=")
 
@@ -17,17 +18,13 @@ spotify_id_instructions = "\n1. Visit the URL below \n2. LOGIN if required, if n
 class CreatePlaylist:
 
     def __init__(self, youtube_client):
-        with open('secrets.json') as secrets_file:
-            secrets = json.load(secrets_file)
-            self.youtube_client = youtube_client
+        self.youtube_client = youtube_client
 
-            self.spotify_token = secrets["spotify_token"] if len(
-                secrets["spotify_token"]) > 0 else self.getSpotifyInfo(spotify_token_instructions)
+        self.spotify_token = self.getSpotifyInfo(spotify_token_instructions)
 
-            self.spotify_user_id = secrets["spotify_user_id"] if len(
-                secrets["spotify_user_id"]) > 0 else self.getSpotifyInfo(spotify_id_instructions)
+        self.spotify_user_id = self.getSpotifyInfo(spotify_id_instructions)
 
-            self.all_song_info = {}
+        self.all_song_info = {}
 
     def get_liked_videos(self):
         request = self.youtube_client.videos().list(
@@ -171,7 +168,7 @@ def main():
                 success = True
             except Exception:
                 print(
-                    '\nSeems like the Spotify details you provided were incorrect or do not match!\n')
+                    '\nSeems like the Spotify details you provided were incorrect, do not match or have expired!\n')
 
     print('\nSuccess! Check your spotify account for a playlist called Liked YT Videos 😎.\n')
 

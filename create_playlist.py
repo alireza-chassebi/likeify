@@ -7,37 +7,27 @@ import googleapiclient.discovery
 import googleapiclient.errors
 import youtube_dl
 
+spotify_token_instructions = "\n1. Visit the URL below \n2. Click GET TOKEN followed by REQUEST TOKEN \n3. LOGIN if required, if not go to step 4\n4. Copy and enter OAuth token below 😀 \nURL:{}\nEnter here:".format(
+    "https://developer.spotify.com/console/post-playlist-tracks/?playlist_id=&position=&uris=")
+
+spotify_id_instructions = "\n1. Visit the URL below \n2. LOGIN if required, if not go to step 3 \n3. Copy and enter Username below 😀 \nURL:{}\nEnter here:".format(
+    'https://www.spotify.com/us/account/overview/?utm_source=play&utm_campaign=wwwredirect')
+
 
 class CreatePlaylist:
 
-    def __init__(self):
+    def __init__(self, youtube_client):
         with open('secrets.json') as secrets_file:
             secrets = json.load(secrets_file)
-            self.spotify_token = secrets["spotify_token"]
-            self.spotify_user_id = secrets["spotify_user_id"]
-            self.youtube_client = self.get_youtube_client()
+            self.youtube_client = youtube_client
+
+            self.spotify_token = secrets["spotify_token"] if len(
+                secrets["spotify_token"]) > 0 else self.getSpotifyInfo(spotify_token_instructions)
+
+            self.spotify_user_id = secrets["spotify_user_id"] if len(
+                secrets["spotify_user_id"]) > 0 else self.getSpotifyInfo(spotify_id_instructions)
+
             self.all_song_info = {}
-
-    def get_youtube_client(self):
-        # Disable OAuthlib's HTTPS verification when running locally.
-        # *DO NOT* leave this option enabled in production.
-        os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
-
-        api_service_name = "youtube"
-        api_version = "v3"
-        client_secrets_file = "client_secret.json"
-
-        # Get credentials and create an API client
-        scopes = ["https://www.googleapis.com/auth/youtube.readonly"]
-        flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-            client_secrets_file, scopes)
-        credentials = flow.run_console()
-
-        # from the Youtube DATA API
-        youtube_client = googleapiclient.discovery.build(
-            api_service_name, api_version, credentials=credentials)
-
-        return youtube_client
 
     def get_liked_videos(self):
         request = self.youtube_client.videos().list(
@@ -69,7 +59,11 @@ class CreatePlaylist:
                         "artist": artist,
                         "spotify_uri": spotify_uri}
 
-    # create spotify playlist
+    def getSpotifyInfo(self, instructions):
+        response = input(instructions)
+        return response.strip()  # remove whitespace
+
+        # create spotify playlist
     def create_playlist(self):
         # playlist metadata
         request_body = json.dumps({
@@ -96,7 +90,6 @@ class CreatePlaylist:
     def get_spotify_uri(self, song_name, artist):
         url = "https://api.spotify.com/v1/search?query=track%3A{}+artist%3A{}&type=track&offset=0&limit=20".format(
             song_name, artist)
-
         response = requests.get(
             url,
             headers={
@@ -136,3 +129,52 @@ class CreatePlaylist:
 
         data = response.json()
         return data
+
+
+def get_youtube_client():
+    # Disable OAuthlib's HTTPS verification when running locally.
+    # *DO NOT* leave this option enabled in production.
+    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
+    api_service_name = "youtube"
+    api_version = "v3"
+    client_secrets_file = "client_secret.json"
+
+    # Get credentials and create an API client
+    scopes = ["https://www.googleapis.com/auth/youtube.readonly"]
+    flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
+        client_secrets_file, scopes)
+
+    credentials = flow.run_console()
+    # from the Youtube DATA API
+    youtube_client = googleapiclient.discovery.build(
+        api_service_name, api_version, credentials=credentials)
+    return youtube_client
+
+
+def main():
+    success = False
+    print('\nDISCLAIMER: this only works for youtube videos that are a track or a part of a music album!\n')
+
+    while not success:
+        try:
+            youtube_client = get_youtube_client()
+        except Exception:
+            print(
+                '\nSeems like the Youtube OAuth token you provided was incorrect!\nTry again!\n')
+            continue
+
+        while not success:
+            try:
+                convert = CreatePlaylist(youtube_client)
+                convert.add_songs_to_playlist()
+                success = True
+            except Exception:
+                print(
+                    '\nSeems like the Spotify details you provided were incorrect or do not match!\n')
+
+    print('\nSuccess! Check your spotify account for a playlist called Liked YT Videos 😎.\n')
+
+
+if __name__ == "__main__":
+    main()

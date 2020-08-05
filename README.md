@@ -51,6 +51,21 @@ To install Likeify, do the following:
 
    <br />
 
+## Setting up client_secret.json
+
+1. go to googles developer [console](https://console.developers.google.com/apis/credentials) credentials section after signing in
+
+2. click Create Credentials then OAuth Client ID
+
+3. fill the form accordingly then click create:
+
+- Application Type: Desktop Application
+- Name: ANYNAME
+
+4. populate **client_secret.json** with the **Client ID** and **Client Secret** provided by the console
+
+   <br />
+
 ## Running Likeify
 
 ---
@@ -73,6 +88,12 @@ To run the app, do the following:
 
 4. follow the instructions carefully 😎.
 
+5. And check your spotify playlists after.
+
    <br />
 
-## Preview
+## Disclaimer
+
+---
+
+This only works for youtube videos that are a track or a part of a music album!
